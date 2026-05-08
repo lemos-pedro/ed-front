@@ -27,21 +27,19 @@
             font-family: 'Plus Jakarta Sans', sans-serif;
             background: var(--bg);
             height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+           margin: 0;
+           padding: 0;
+           overflow: hidden;
         }
 
         #chatScreen {
             width: 100%;
-            max-width: 960px;
-            height: 88vh;
+            height: 100vh;
             background: var(--white);
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: var(--shadow);
             display: flex;
             flex-direction: column;
+            border-radius: 0;
+            box-shadow: none;
         }
 
         .chat-header {
@@ -97,7 +95,122 @@
             cursor: pointer;
             transition: background 0.2s;
         }
+        .btn-call {
+        background: rgba(255,255,255,0.15);
+        border: none;
+        color: white;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 
+    .btn-call:hover { background: rgba(255,255,255,0.3); }
+
+    /* Modal da videochamada */
+    #callModal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.85);
+        z-index: 1000;
+        flex-direction: column;
+    }
+
+    #callModal.active { display: flex; }
+
+    .call-header {
+        padding: 16px 24px;
+        background: #1a1d2e;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: white;
+    }
+
+    .call-header span { font-weight: 600; font-size: 1rem; }
+
+    .call-controls {
+        padding: 16px;
+        background: #1a1d2e;
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+
+    .ctrl-btn {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.1s;
+    }
+
+    .ctrl-btn:active { transform: scale(0.93); }
+    .ctrl-btn.red { background: #ef4444; color: white; }
+    .ctrl-btn.gray { background: #374151; color: white; }
+
+    #participantsGrid {
+        flex: 1;
+        display: grid;
+        gap: 8px;
+        padding: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        overflow-y: auto;
+        background: #111827;
+    }
+
+    .participant-tile {
+        background: #1f2937;
+        border-radius: 16px;
+        overflow: hidden;
+        position: relative;
+        aspect-ratio: 16/9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .participant-tile video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .participant-name {
+        position: absolute;
+        bottom: 10px;
+        left: 12px;
+        background: rgba(0,0,0,0.6);
+        color: white;
+        padding: 3px 10px;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .participant-avatar {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: #4776E6;
+        color: white;
+        font-size: 1.8rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
         .btn-logout:hover { background: rgba(255,255,255,0.25); }
 
         .chat-messages {
@@ -241,6 +354,9 @@
             <div class="header-title" id="headerSala">A carregar sala...</div>
             <div class="header-subtitle" id="headerSubtitle">A conectar...</div>
         </div>
+        <button class="btn-call" id="callButton" onclick="iniciarChamada()" title="Videochamada">
+                    📹
+         </button>
         <div style="display:flex; gap:10px; align-items:center">
             <div class="user-badge">
                 <div class="user-avatar" id="userAvatar">?</div>
@@ -259,10 +375,17 @@
         </div>
     </div>
 
-    <div class="chat-input-area">
+   <div class="chat-input-area">
         <span class="ws-status" id="wsStatus" style="color:#94a3b8">⬤ desconectado</span>
-        <input type="text" id="messageInput" placeholder="Escreve uma mensagem..." disabled>
-        <button id="sendButton" disabled>
+        
+        <!-- Botão de anexar ficheiro -->
+        <button id="attachButton" class="attach-btn" title="Anexar ficheiro">📎</button>
+        
+        <input type="file" id="fileInput" multiple style="display: none;" accept="image/*,video/*,audio/*,.pdf,.doc,.docx">
+        
+        <input type="text" id="messageInput" placeholder="Escreve uma mensagem..." >
+        
+        <button id="sendButton" >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
             </svg>
@@ -270,27 +393,47 @@
     </div>
 </div>
 
+<div id="callModal">
+    <div class="call-header">
+        <span id="callRoomName">Sala</span>
+        <span id="callParticipantCount" style="font-size: 0.85rem; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px;">0 participantes</span>
+    </div>
+    
+    <div id="participantsGrid"></div>
+    
+    <div class="call-controls">
+        <button class="ctrl-btn gray" id="btnMic" onclick="toggleMic()" title="Ligar/Desligar Microfone">🎤</button>
+        <button class="ctrl-btn gray" id="btnCam" onclick="toggleCam()" title="Ligar/Desligar Câmara">📷</button>
+        <button class="ctrl-btn red" onclick="terminarChamada()" title="Terminar Chamada">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-7-7 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path>
+                <line x1="23" y1="1" x2="1" y2="23"></line>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
 <script>
-    const API = 'https://api.drucciacessorios.pt';
+    const API = 'http://127.0.0.1:8000';
     let token = localStorage.getItem('token');
     let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
     let ws = null;
+    let typingTimeout;
 
-    // ── VERIFICAR AUTENTICAÇÃO ────────────────────────────
+    // ==================== INICIALIZAÇÃO ====================
     if (!token || !currentUser) {
         window.location.href = 'login.html';
     } else {
         iniciarChat();
     }
 
-    // ── INICIAR CHAT ──────────────────────────────────────
     async function iniciarChat() {
-        // extrair id e nome do token
         const payload = JSON.parse(atob(token.split('.')[1]));
         currentUser.id = parseInt(payload.sub);
 
-        // preencher nome e avatar
-        const nome = currentUser?.nome || currentUser?.email?.split('@')[0] || 'User';
+        const nome = currentUser?.nome || currentUser?.email?.split('@')[0] || 'Utilizador';
         document.getElementById('userName').textContent = nome;
         document.getElementById('userAvatar').textContent = nome.substring(0, 2).toUpperCase();
 
@@ -311,135 +454,438 @@
                 document.getElementById('headerSubtitle').textContent = `Código: ${sala.codigo}`;
 
                 conectarWS(sala.id);
-            } else {
-                document.getElementById('headerSala').textContent = 'Sem sala atribuída';
-                document.getElementById('headerSubtitle').textContent = 'Contacta o administrador';
-                document.getElementById('chatMessages').innerHTML = `
-                    <div class="empty-state">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                        </svg>
-                        <span>Não estás associado a nenhuma sala.</span>
-                        <span style="font-size:0.82rem">Pede ao administrador o código de sala.</span>
-                    </div>`;
             }
         } catch (e) {
-            document.getElementById('headerSubtitle').textContent = 'Erro ao carregar sala';
+            console.error(e);
         }
     }
 
-    // ── WEBSOCKET ─────────────────────────────────────────
+    // ==================== WEBSOCKET ====================
     function conectarWS(salaId) {
         if (ws) ws.close();
 
-        setWsStatus('A conectar...', false);
-
-        ws = new WebSocket(`wss://api.drucciacessorios.pt/chat/ws/${salaId}?token=${token}`);
+        ws = new WebSocket(`ws://127.0.0.1:8000/chat/ws/${salaId}?token=${token}`);
 
         ws.onopen = () => {
-            setWsStatus('ligado', true);
+            console.log("✅ WebSocket conectado");
+            setStatus('ligado');
             document.getElementById('messageInput').disabled = false;
             document.getElementById('sendButton').disabled = false;
-            document.getElementById('statusDot').classList.remove('offline');
+            document.getElementById('messageInput').focus();
         };
 
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            const emptyState = document.getElementById('emptyState');
-            if (emptyState) emptyState.remove();
 
-            if (data.tipo === 'sistema') {
-                adicionarMensagem({ tipo: 'system', texto: data.mensagem, hora: data.hora });
-            } else {
-                const isOwn = data.user_id === currentUser.id;
-                adicionarMensagem({
-                    tipo: isOwn ? 'sent' : 'received',
-                    texto: data.mensagem,
-                    autor: data.autor,
-                    hora: data.hora,
-                    isOwn
-                });
+            if (data.tipo === 'historico') {
+                document.getElementById('chatMessages').innerHTML = '';
+                data.mensagens.forEach(msg => adicionarMensagem(msg));
+
+            } else if (data.tipo === 'mensagem') {
+                adicionarMensagem(data);
+
+            } else if (data.tipo === 'sistema') {
+                adicionarMensagemSistema(data.mensagem || data.conteudo);
+
+            } else if (data.tipo === 'typing') {
+                showTypingIndicator(data.autor);
+
+            } else if (data.tipo === 'reaction') {
+                const msgDiv = document.querySelector(`[data-id="${data.message_id}"]`);
+                if (!msgDiv) return;
+
+                let reactionBar = msgDiv.querySelector('.reaction-bar');
+                if (!reactionBar) {
+                    reactionBar = document.createElement('div');
+                    reactionBar.className = 'reaction-bar';
+                    reactionBar.style.cssText = 'margin-top:4px; font-size:0.9rem; display:flex; gap:4px; flex-wrap:wrap;';
+                    msgDiv.querySelector('.message-meta').before(reactionBar);
+                }
+
+                const existing = Array.from(reactionBar.querySelectorAll('.reaction-pill'))
+                    .find(el => el.dataset.emoji === data.emoji);
+
+                if (existing) {
+                    const count = parseInt(existing.dataset.count || '1') + 1;
+                    existing.dataset.count = count;
+                    existing.textContent = `${data.emoji} ${count}`;
+                } else {
+                    const pill = document.createElement('span');
+                    pill.className = 'reaction-pill';
+                    pill.dataset.emoji = data.emoji;
+                    pill.dataset.count = '1';
+                    pill.textContent = `${data.emoji} 1`;
+                    pill.style.cssText = `
+                        background: rgba(71,118,230,0.15);
+                        border-radius: 12px;
+                        padding: 2px 8px;
+                        cursor: pointer;
+                        font-size: 0.85rem;
+                        border: 1px solid rgba(71,118,230,0.3);
+                    `;
+                    reactionBar.appendChild(pill);
+                }
             }
         };
 
         ws.onclose = () => {
-            setWsStatus('desconectado', false);
+            setStatus('desconectado');
             document.getElementById('messageInput').disabled = true;
             document.getElementById('sendButton').disabled = true;
-            document.getElementById('statusDot').classList.add('offline');
-            setTimeout(() => { if (token) conectarWS(salaId); }, 3000);
+            setTimeout(() => conectarWS(salaId), 3000);
         };
 
-        ws.onerror = () => {
-            setWsStatus('erro de ligação', false);
+        ws.onerror = (err) => {
+            console.error("❌ WebSocket erro:", err);
+            setStatus('desconectado');
         };
     }
 
-    function setWsStatus(texto, ligado) {
-        const el = document.getElementById('wsStatus');
-        el.textContent = '⬤ ' + texto;
-        el.style.color = ligado ? '#22c55e' : '#94a3b8';
+    function setStatus(estado) {
+        const dot = document.getElementById('statusDot');
+        const wsStatus = document.getElementById('wsStatus');
+        if (dot) dot.classList.toggle('offline', estado !== 'ligado');
+        if (wsStatus) {
+            wsStatus.textContent = estado === 'ligado' ? '⬤ online' : '⬤ offline';
+            wsStatus.style.color = estado === 'ligado' ? '#22c55e' : '#ef4444';
+        }
     }
 
-    // ── ADICIONAR MENSAGEM ────────────────────────────────
-    function adicionarMensagem({ tipo, texto, autor, hora, isOwn }) {
+    // ==================== ENVIAR MENSAGEM ====================
+    function enviarMensagem() {
+        const input = document.getElementById('messageInput');
+        const texto = input.value.trim();
+
+        if (!texto) return;
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            alert('Sem ligação. Aguarda...');
+            return;
+        }
+
+        const tempId = `temp-${Date.now()}`;
+        adicionarMensagem({
+            id: tempId,
+            user_id: currentUser.id,
+            autor: currentUser.nome || 'Eu',
+            conteudo: texto,
+            hora: new Date().toISOString()
+        });
+
+        ws.send(JSON.stringify({ conteudo: texto }));
+        input.value = '';
+        input.focus();
+    }
+
+    // ==================== UPLOAD DE FICHEIROS ====================
+    const fileInput = document.getElementById('fileInput');
+    const attachButton = document.getElementById('attachButton');
+
+    attachButton.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', async (e) => {
+        for (let file of e.target.files) {
+            if (file.size > 50 * 1024 * 1024) {
+                alert(`"${file.name}" muito grande (máx. 50MB)`);
+                continue;
+            }
+            await uploadFicheiro(file);
+        }
+        fileInput.value = '';
+    });
+
+    async function uploadFicheiro(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch(`${API}/chat/upload?token=${token}`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        conteudo: null,
+                        file_url: data.url,
+                        file_name: data.nome,
+                        file_type: data.tipo,
+                        file_size: data.tamanho
+                    }));
+                }
+            } else {
+                alert('Erro ao enviar ficheiro.');
+            }
+        } catch (e) {
+            console.error('Erro upload:', e);
+            alert('Erro de ligação ao enviar ficheiro.');
+        }
+    }
+
+    // ==================== ADICIONAR MENSAGEM (CORRIGIDO) ====================
+    function adicionarMensagem(msg) {
         const container = document.getElementById('chatMessages');
-        const div = document.createElement('div');
-        div.className = `message ${tipo}`;
 
-        const horaFormatada = hora
-            ? new Date(hora).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        if (msg.id && document.querySelector(`[data-id="${msg.id}"]`)) return;
+
+        const div = document.createElement('div');
+        const isOwn = msg.user_id === currentUser.id;
+
+        div.className = `message ${isOwn ? 'sent' : 'received'}`;
+        if (msg.id) div.dataset.id = msg.id;
+
+        const horaFormatada = msg.hora
+            ? new Date(msg.hora).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        if (tipo === 'system') {
-            div.innerHTML = `<div class="message-bubble">${escapeHtml(texto)}</div>`;
-        } else {
-            div.innerHTML = `
-                <div class="message-bubble">${escapeHtml(texto)}</div>
-                <div class="message-meta">
-                    ${!isOwn ? `<span class="sender-name">${escapeHtml(autor || '')}</span>` : ''}
-                    <span>${horaFormatada}</span>
-                </div>`;
+        let conteudoHTML = msg.conteudo ? escapeHtml(msg.conteudo) : '';
+
+        if (msg.is_call || (msg.conteudo && msg.conteudo.includes('📹'))) {
+            conteudoHTML += `
+                <br><button onclick="iniciarChamada()" 
+                    style="margin-top:10px; background:#22c55e; color:white; border:none; 
+                           padding:8px 12px; border-radius:8px; cursor:pointer;">
+                    Entrar na Videochamada
+                </button>`;
         }
+
+        if (msg.file_url) {
+            const url = msg.file_url.startsWith('http') ? msg.file_url : `${API}${msg.file_url}`;
+
+            if (msg.file_type === 'image') {
+                conteudoHTML += `<br><img src="${url}" style="max-width:100%; max-height:300px; border-radius:12px; margin:8px 0; cursor:pointer;" onclick="window.open('${url}', '_blank')" onerror="this.style.display='none'">`;
+            } else if (msg.file_type === 'video') {
+                conteudoHTML += `<br><video src="${url}" controls style="max-width:100%; max-height:300px; border-radius:12px; margin:8px 0;"></video>`;
+            } else if (msg.file_type === 'audio') {
+                conteudoHTML += `<br><audio src="${url}" controls style="width:100%; margin:8px 0;"></audio>`;
+            } else {
+                conteudoHTML += `
+                    <br><a href="${url}" target="_blank" 
+                    style="display:inline-flex; align-items:center; gap:6px; padding:8px 12px;
+                           background:rgba(255,255,255,0.2); border-radius:8px; color:inherit; text-decoration:none; margin-top:6px;">
+                        📎 ${escapeHtml(msg.file_name || 'ficheiro')}
+                    </a>`;
+            }
+        }
+
+        div.innerHTML = `
+            <div class="message-bubble">${conteudoHTML}</div>
+            <div class="reactions" style="display:none; margin-top:4px; font-size:1.1rem; cursor:pointer; user-select:none;">
+                ❤️ 👍 😂 😮 😢 👏
+            </div>
+            <div class="message-meta">
+                ${!isOwn ? `<span class="sender-name">${escapeHtml(msg.autor || '')}</span>` : ''}
+                <span>${horaFormatada}</span>
+            </div>
+        `;
+
+        const bubble = div.querySelector('.message-bubble');
+        const reactions = div.querySelector('.reactions');
+
+        bubble.addEventListener('mouseenter', () => reactions.style.display = 'block');
+        bubble.addEventListener('mouseleave', () => setTimeout(() => reactions.style.display = 'none', 800));
+
+        reactions.addEventListener('click', (e) => {
+            const emoji = e.target.textContent.trim();
+            if (emoji && msg.id && ws?.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ tipo: 'reaction', message_id: msg.id, emoji }));
+            }
+        });
+
+        const emptyState = document.getElementById('emptyState');
+        if (emptyState) emptyState.remove();
 
         container.appendChild(div);
         container.scrollTop = container.scrollHeight;
     }
 
-    // ── ENVIAR MENSAGEM ───────────────────────────────────
-    function enviarMensagem() {
-        const input = document.getElementById('messageInput');
-        const texto = input.value.trim();
-        if (!texto || !ws || ws.readyState !== WebSocket.OPEN) return;
-        ws.send(texto);
-        input.value = '';
-        input.focus();
+    function adicionarMensagemSistema(texto) {
+        const container = document.getElementById('chatMessages');
+        const div = document.createElement('div');
+        div.className = 'message system';
+        div.innerHTML = `<div class="message-bubble">${escapeHtml(texto)}</div>`;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
     }
 
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function logout() {
+        if (ws) ws.close();
+        localStorage.clear();
+        window.location.href = 'login.html';
+    }
+
+    // ==================== EVENTOS ====================
     document.getElementById('sendButton').addEventListener('click', enviarMensagem);
     document.getElementById('messageInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') enviarMensagem();
     });
 
-    // ── LOGOUT ────────────────────────────────────────────
-    function logout() {
-        if (ws) ws.close();
-        ws = null;
-        token = null;
-        currentUser = null;
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = 'login.html';
+    // ==================== LIVEKIT ====================
+    let livekitRoom = null;
+    let micEnabled = true;
+    let camEnabled = true;
+
+    async function iniciarChamada() {
+       try {
+            console.log("🔄 A pedir token LiveKit...");
+
+            const res = await fetch(`${API}/livekit/token`, {
+                method: 'GET',                    
+                headers: { 
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error(`❌ Erro ao pedir token: ${res.status} - ${errorText}`);
+                alert(`Erro ${res.status}: Não foi possível obter token do servidor.`);
+                return;
+            }
+
+            const data = await res.json();
+            console.log("✅ Token LiveKit recebido:", data);
+
+            if (!data.token || !data.url) {
+                alert("Resposta inválida do servidor LiveKit.");
+                return;
+            }
+
+            // Interface
+            document.getElementById('callRoomName').textContent = currentUser.sala_nome || 'Sala';
+            document.getElementById('callModal').classList.add('active');
+            document.getElementById('participantsGrid').innerHTML = '';
+
+            // Criar sala
+            livekitRoom = new LivekitClient.Room({
+                adaptiveStream: true,
+                dynacast: true,
+            });
+
+            // Eventos
+            livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track, pub, participant) => {
+                anexarTrack(participant, track);
+            });
+
+            livekitRoom.on(LivekitClient.RoomEvent.ParticipantConnected, (p) => {
+                adicionarParticipanteTile(p.identity, p.name || p.identity);
+                atualizarContagem();
+            });
+
+            livekitRoom.on(LivekitClient.RoomEvent.ParticipantDisconnected, (p) => {
+                document.getElementById(`tile-${p.identity}`)?.remove();
+                atualizarContagem();
+            });
+
+            console.log("🔌 A conectar ao LiveKit...");
+            await livekitRoom.connect(data.url, data.token);
+
+            console.log("✅ Conectado ao LiveKit!");
+            await livekitRoom.localParticipant.enableCameraAndMicrophone();
+
+            adicionarParticipanteTile(livekitRoom.localParticipant.identity, "Eu (Tu)");
+
+            // Anexar vídeo local
+            livekitRoom.localParticipant.trackPublications.forEach(pub => {
+                if (pub.track && pub.track.kind === 'video') {
+                    anexarTrack(livekitRoom.localParticipant, pub.track);
+                }
+            });
+
+            // Participantes já existentes
+            livekitRoom.remoteParticipants.forEach(p => {
+                adicionarParticipanteTile(p.identity, p.name || p.identity);
+                p.trackPublications.forEach(pub => {
+                    if (pub.track) anexarTrack(p, pub.track);
+                });
+            });
+
+            atualizarContagem();
+
+       } catch (e) {
+            console.error('❌ Erro LiveKit:', e);
+            alert('Erro ao conectar à videochamada:\n' + e.message);
+            terminarChamada();
+        }
     }
 
-    // ── UTILITÁRIOS ───────────────────────────────────────
-    function escapeHtml(str) {
-        return String(str)
-            .replace(/&/g,'&amp;')
-            .replace(/</g,'&lt;')
-            .replace(/>/g,'&gt;')
-            .replace(/"/g,'&quot;');
+    function anexarTrack(participant, track) {
+        if (track.kind === 'audio') return;
+        const tile = document.getElementById(`tile-${participant.identity}`);
+        if (!tile) return;
+
+        tile.querySelector('.participant-avatar')?.style.setProperty('display', 'none');
+        tile.querySelectorAll('video').forEach(v => v.remove());
+
+        const el = track.attach();
+        el.style.cssText = 'width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; z-index:1;';
+        tile.appendChild(el);
+    }
+
+    function adicionarParticipanteTile(identity, nome) {
+        if (document.getElementById(`tile-${identity}`)) return;
+        const grid = document.getElementById('participantsGrid');
+        const tile = document.createElement('div');
+        tile.className = 'participant-tile';
+        tile.id = `tile-${identity}`;
+        tile.style.position = 'relative';
+        tile.innerHTML = `
+            <div class="participant-avatar" style="z-index:2; position:relative;">${nome.substring(0, 2).toUpperCase()}</div>
+            <div class="participant-name" style="z-index:3; position:absolute; bottom:10px; left:10px;">${nome}</div>
+        `;
+        grid.appendChild(tile);
+    }
+
+    function atualizarContagem() {
+        const total = document.querySelectorAll('.participant-tile').length;
+        const el = document.getElementById('callParticipantCount');
+        if (el) el.textContent = `${total} participante${total !== 1 ? 's' : ''}`;
+    }
+
+    async function toggleMic() {
+        if (!livekitRoom) return;
+        micEnabled = !micEnabled;
+        await livekitRoom.localParticipant.setMicrophoneEnabled(micEnabled);
+        const btn = document.getElementById('btnMic');
+        btn.textContent = micEnabled ? '🎤' : '🔇';
+        btn.style.background = micEnabled ? '#374151' : '#ef4444';
+    }
+
+    async function toggleCam() {
+        if (!livekitRoom) return;
+        camEnabled = !camEnabled;
+        await livekitRoom.localParticipant.setCameraEnabled(camEnabled);
+        const btn = document.getElementById('btnCam');
+        btn.textContent = camEnabled ? '📷' : '🚫';
+        btn.style.background = camEnabled ? '#374151' : '#ef4444';
+    }
+
+    async function terminarChamada() {
+        if (livekitRoom) {
+            await livekitRoom.disconnect();
+            livekitRoom = null;
+        }
+        document.getElementById('callModal').classList.remove('active');
+        document.getElementById('participantsGrid').innerHTML = '';
+        
+        micEnabled = true;
+        camEnabled = true;
+        document.getElementById('btnMic').textContent = '🎤';
+        document.getElementById('btnCam').textContent = '📷';
+        document.getElementById('btnMic').style.background = '#374151';
+        document.getElementById('btnCam').style.background = '#374151';
     }
 </script>
+
 </body>
 </html>

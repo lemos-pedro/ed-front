@@ -492,7 +492,7 @@
             async function loadDashboardData() {
                 try {
                     // Simulate API call to get stats
-                    const response = await fetch('https://api.drucciacessorios.pt/salas/', {
+                    const response = await fetch('http://http://127.0.0.1:8000/salas/', {
                         method: 'GET',
                         headers: {
                             'Authorization': 'Bearer ' + getStoredToken()
@@ -529,7 +529,7 @@
             // Load recent rooms
             async function loadRecentRooms() {
                 try {
-                    const response = await fetch('https://api.drucciacessorios.pt/salas/', {
+                    const response = await fetch('http://http://127.0.0.1:8000/salas/', {
                         method: 'GET',
                         headers: {
                             'Authorization': 'Bearer ' + getStoredToken()
@@ -558,7 +558,7 @@
             // Load rooms data
             async function loadRoomsData() {
                 try {
-                    const response = await fetch('https://api.drucciacessorios.pt/salas/', {
+                    const response = await fetch('http://http://127.0.0.1:8000/salas/', {
                         method: 'GET',
                         headers: {
                             'Authorization': 'Bearer ' + getStoredToken()
@@ -596,7 +596,7 @@
                 this.textContent = 'Criando...';
                 
                 try {
-                    const response = await fetch('https://api.drucciacessorios.pt/salas/', {
+                    const response = await fetch('http://http://127.0.0.1:8000/salas/', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -646,7 +646,7 @@
                 document.getElementById('usersError').textContent = '';
                 
                 try {
-                    const response = await fetch(`https://api.drucciacessorios.pt/salas/${roomId}/usuarios`, {
+                    const response = await fetch(`http://http://127.0.0.1:8000/salas/${roomId}/usuarios`, {
                         method: 'GET',
                         headers: {
                             'Authorization': 'Bearer ' + getStoredToken()
@@ -685,7 +685,7 @@
             // Helper function to get room name by ID
             async function getRoomNameById(id) {
                 try {
-                    const response = await fetch(`https://api.drucciacessorios.pt/salas/${id}`, {
+                    const response = await fetch(`http://http://127.0.0.1:8000/salas/${id}`, {
                         method: 'GET',
                         headers: {
                             'Authorization': 'Bearer ' + getStoredToken()
