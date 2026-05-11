@@ -464,7 +464,7 @@
     function conectarWS(salaId) {
         if (ws) ws.close();
 
-        ws = new WebSocket(`ws://drucciacessorios.pt/chat/ws/${salaId}?token=${token}`);
+        ws = new WebSocket(`wss://drucciacessorios.pt/chat/ws/${salaId}?token=${token}`);
 
         ws.onopen = () => {
             console.log("✅ WebSocket conectado");
