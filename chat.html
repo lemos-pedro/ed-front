@@ -416,7 +416,7 @@
 <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
 <script>
-    const API = 'http://127.0.0.1:8000';
+    const API = 'https://chat.drucciacessorios.pt';
     let token = localStorage.getItem('token');
     let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
     let ws = null;
@@ -464,7 +464,7 @@
     function conectarWS(salaId) {
         if (ws) ws.close();
 
-        ws = new WebSocket(`wss://drucciacessorios.pt/chat/ws/${salaId}?token=${token}`);
+        ws = new WebSocket(`ws://chat.drucciacessorios.pt/chat/ws/${salaId}?token=${token}`);
 
         ws.onopen = () => {
             console.log("✅ WebSocket conectado");
