@@ -676,7 +676,7 @@
         formData.append('file', file);
 
         try {
-            const res = await fetch(`${API}/upload?token=${token}`, {
+            const res = await fetch(`${API}/upload`, {
                 method: 'POST',
                 body: formData
             });
